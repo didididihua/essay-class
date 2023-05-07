@@ -1,5 +1,6 @@
 package com.yupi.springbootinit.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -307,6 +308,20 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }).collect(Collectors.toList());
         postVOPage.setRecords(postVOList);
         return postVOPage;
+    }
+
+    @Override
+    public Long getLatestPostId() {
+
+        LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
+        //获取到排序的postId第一条
+        wrapper.select(Post::getPostId)
+                .orderByDesc(Post::getPostId)
+                .last("limit 1");
+
+        Post one = this.getOne(wrapper);
+
+        return one.getPostId();
     }
 
 }

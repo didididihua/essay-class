@@ -12,7 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.springbootinit.common.ErrorCode;
-import com.yupi.springbootinit.config.thread.MyThreadConfig;
+import com.yupi.springbootinit.constant.CrawlPostConstant;
 import com.yupi.springbootinit.constant.RedisKeyConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.mapper.PostLabelMapper;
@@ -58,14 +58,6 @@ public class PostLabelServiceImpl extends ServiceImpl<PostLabelMapper, PostLabel
      */
     private Map<String, List<Long>> labelNameToIdMap = new HashMap<>();
 
-
-    /**
-     * 用于获取编程导航所有帖子的url
-     */
-    private static final String URL = "https://www.code-nav.cn/api/post/list/page/vo";
-
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36";
-
     /**
      * 爬取文章的最大页数
      */
@@ -75,30 +67,28 @@ public class PostLabelServiceImpl extends ServiceImpl<PostLabelMapper, PostLabel
     public void getPostData() {
         final CountDownLatch countDownLatch = new CountDownLatch(POST_LIMIT);
 
-        String format = String.format("{\"current\":%s,\"reviewStatus\":1,\"sortField\":\"createTime\",\"sortOrder\":\"descend\"}", 1);
-        doGetPostData(format);
+//        String format = String.format("{\"current\":%s,\"reviewStatus\":1,\"sortField\":\"createTime\",\"sortOrder\":\"descend\"}", 1);
+//        doGetPostData(format);
 
         //开启多线程的获取
-//        for (int i = 0; i < 1; i++) {
-//            int finalI = i;
-//            //拼接url
-//            String format = String.format("{\"current\":%s,\"reviewStatus\":1,\"sortField\":\"createTime\",\"sortOrder\":\"descend\"}", i + 1);
-//            threadPool.submit(()->{
-//                try {
-//                    //启动多个线程去爬取数据
-////                    doGetPostData(format);
-//                    System.out.println(format);
-//                }finally {
-//                    countDownLatch.countDown();
-//                }
-//            });
-//        }
-//        //关闭线程处理
-//        try {
-//            countDownLatch.await();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        for (int i = 0; i < 1; i++) {
+            //拼接url
+            String format = String.format(CrawlPostConstant.BASE_REQUEST_PARAM, i + 1);
+            threadPool.submit(()->{
+                try {
+                    //启动多个线程去爬取数据
+                    doGetPostData(format);
+                }finally {
+                    countDownLatch.countDown();
+                }
+            });
+        }
+        //关闭线程处理
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -137,14 +127,12 @@ public class PostLabelServiceImpl extends ServiceImpl<PostLabelMapper, PostLabel
      */
     public void doGetPostData(String json) {
 
-        //向编程导航发送请求，获取文章数据
-        String result2 = HttpRequest.post(URL)
-                .body(json)//表单内容
-                .header(Header.USER_AGENT, USER_AGENT)
-                .timeout(20000)//超时，毫秒
-                .execute().body();
+        /**
+         *  调用方法，向编程导航网站发出请求，得到最初的JSON数据，转成Map,
+         *  这里的请求在定时任务里面也要使用，所以封装成了一个方法
+         */
+        Map map = getJSONDataMap(json);
 
-        Map map = JSONUtil.toBean(result2, Map.class);
         JSONObject data = (JSONObject) map.get("data");
         JSONArray records = (JSONArray) data.get("records");
 
@@ -168,9 +156,36 @@ public class PostLabelServiceImpl extends ServiceImpl<PostLabelMapper, PostLabel
 
         //保底，没到20条时也情况一下
         savePostAndPostLabelData(postList, postLabelList);
-
         log.info("post数据与postLabel数据构建完成~~");
 
+    }
+
+    /**
+     * 发出http请求，获取到最出的响应数据，判断成功与否，转换成map
+     * @param json
+     * @return
+     */
+    @Override
+    public Map getJSONDataMap(String json) {
+
+        //向编程导航发送请求，获取文章数据
+        String result2 = HttpRequest.post(CrawlPostConstant.URL)
+                .body(json)//表单内容
+                .header(Header.USER_AGENT, CrawlPostConstant.USER_AGENT)
+                .header(Header.REFERER,CrawlPostConstant.REFERER)
+                .timeout(20)//超时，毫秒
+                .execute().body();
+
+        Map map = JSONUtil.toBean(result2, Map.class);
+
+        //如果请求失败，抛异常
+        if(ObjectUtil.isEmpty(map.get(CrawlPostConstant.CODE)) ||
+                !CrawlPostConstant.SUCCESS_CODE.equals(map.get(CrawlPostConstant.CODE))){
+            System.out.println("向编程导航网站请求标签数据失败");
+            throw new BusinessException(ErrorCode.HTTP_REQUEST_FAIL, "爬取标签数据失败");
+        }
+
+        return map;
     }
 
     public void savePostAndPostLabelData(ArrayList<Post> postList, ArrayList<PostLabel> postLabelList){
@@ -186,6 +201,7 @@ public class PostLabelServiceImpl extends ServiceImpl<PostLabelMapper, PostLabel
      * @param jsonObject json数据
      * @return 填充好的post对象
      */
+    @Override
     public Post getPost(JSONObject jsonObject, List<PostLabel> postLabelList){
 
         Post post = new Post();

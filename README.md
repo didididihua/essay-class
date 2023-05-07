@@ -1,165 +1,75 @@
-# SpringBoot 项目初始模板
+# 爬取文章与归档功能
 
-> 作者：[程序员鱼皮](https://github.com/liyupi)
-> 仅分享于 [编程导航知识星球](https://yupi.icu)
+> 
+> 本项目是用于完成[程序员鱼皮](https://github.com/liyupi) 提出的导入[编程导航知识星球](https://yupi.icu)所有文章且按标签分层归类的功能
+> 在springboot-init项目基础上完成
 
-基于 Java SpringBoot 的项目初始模板，整合了常用框架和主流业务的示例代码。
+> 作者：didididi (1514176166@qq.com)
 
-只需 1 分钟即可完成内容网站的后端！！！大家还可以在此基础上快速开发自己的项目。
+## 项目添加功能简介：
+* **1.标签数据获取：**
+  * 获取编程导航分享文章是可使用的标签，且按照获取到的数据进行了分层构造，存入数据库，其数据展示是树状的标签数据
+  * 在项目启动时执行一次任务，进行标签数据的获取与入库
+  * 使用redis缓存其树状数据，提高响应效率
+  * 使用Redisson分布式锁防止缓存击穿问题
+* **2.文章数据获取：**
+  * 提供一个进行一次文档的全量获取的请求（不算全量，只是一次获取较多文章）
+    * 使用自定义线程池进行多线程并发获取，较快效率
+  * 之后使用每分钟一次的定时任务进行增量获取文章数据
+* **3.文章数据的归档：**
+  * 使用标签数据表与文章数据表的多对多关系，构建一张标签与文章的中间表 `post_label`
+  * 在构建文章post对象时同时构建其与标签的关系对象，一同进行批量插入
+    * 维护了一个使用单例的map（双检锁），便于有标签名获取到对应的标签list
+* **4. 小小反爬设置**
+  * 设置REFERER
+  * 设置USER_AGENT
+  * 使用了ip池进行动态代理ip设置：
+    * 使用jsoup从快代理网站的html数据，得到一些高匿ip,形成ip池
+    * 使用代理的请求会进行一定次数的失败重试（简单for循环，嘿嘿）
 
-[toc]
+### 简图：
+![img.png](img.png)
 
-## 模板特点
+![img_1.png](img_1.png)
 
-### 主流框架 & 特性
+![img_2.png](img_2.png)
 
-- Spring Boot 2.7.x（贼新）
-- Spring MVC
-- MyBatis + MyBatis Plus 数据访问（开启分页）
-- Spring Boot 调试工具和项目处理器
-- Spring AOP 切面编程
-- Spring Scheduler 定时任务
-- Spring 事务注解
-
-### 数据存储
-
-- MySQL 数据库
-- Redis 内存数据库
-- Elasticsearch 搜索引擎
-- 腾讯云 COS 对象存储
-
-### 工具类
-
-- Easy Excel 表格处理
-- Hutool 工具库
-- Gson 解析库
-- Apache Commons Lang3 工具类
-- Lombok 注解
-
-### 业务特性
-
-- Spring Session Redis 分布式登录
-- 全局请求响应拦截器（记录日志）
-- 全局异常处理器
-- 自定义错误码
-- 封装通用响应类
-- Swagger + Knife4j 接口文档
-- 自定义权限注解 + 全局校验
-- 全局跨域处理
-- 长整数丢失精度解决
-- 多环境配置
-
-
-## 业务功能
-
-- 提供示例 SQL（用户、帖子、帖子点赞、帖子收藏表）
-- 用户登录、注册、注销、更新、检索、权限管理
-- 帖子创建、删除、编辑、更新、数据库检索、ES 灵活检索
-- 帖子点赞、取消点赞
-- 帖子收藏、取消收藏、检索已收藏帖子
-- 帖子全量同步 ES、增量同步 ES 定时任务
-- 支持微信开放平台登录
-- 支持微信公众号订阅、收发消息、设置菜单
-- 支持分业务的文件上传
-
-### 单元测试
-
-- JUnit5 单元测试
-- 示例单元测试类
-
-### 架构设计
-
-- 合理分层
-
-
-## 快速上手
-
-> 所有需要修改的地方鱼皮都标记了 `todo`，便于大家找到修改的位置~
-
-### MySQL 数据库
-
-1）修改 `application.yml` 的数据库配置为你自己的：
-
-```yml
+## 项目启动：
+> 本项目运行在有Maven与JDK8及以上的环境下
+### 1. 更改配置:
+* **导入数据库sql:**
+  * 直接使用本项目sql文件夹中的api_db_sql.sql文件进行数据导入即可
+* **更改数数据库配置:**
+```yaml
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/my_db
-    username: root
-    password: 123456
+  driver-class-name: com.mysql.cj.jdbc.Driver
+  url: jdbc:mysql://localhost:3306/diso_db
+  username: xxxx # 你的mysql的用户名称
+  password: xxxx # 你的mysql的密码
 ```
-
-2）执行 `sql/create_table.sql` 中的数据库语句，自动创建库表
-
-3）启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
-
-![](doc/swagger.png)
-
-### Redis 分布式登录
-
-1）修改 `application.yml` 的 Redis 配置为你自己的：
-
-```yml
+* **该功能需要使用redis,所以更改redis的配置:**
+```yaml
 spring:
   redis:
     database: 1
-    host: localhost
-    port: 6379
+    host: xxx.xxx.xxx.xxx # 运行redis的主机ip
+    port: xxxx # redis使用的端口
     timeout: 5000
-    password: 123456
+    password: xxxxx # redis的密码
 ```
-
-2）修改 `application.yml` 中的 session 存储方式：
-
-```yml
-spring:
-  session:
-    store-type: redis
-```
-
-3）移除 `MainApplication` 类开头 `@SpringBootApplication` 注解内的 exclude 参数：
-
-修改前：
-
+* 在项目启动后会运行 `PostLabelData` 类中设置的任务(进行一次导入标签数据的任务)，若停止后在其启动本项目，请将其关闭，
+  * 关闭:
+  取消@Compoent的注释，将其作为bean注入注入到ioc中即表示在启动本项目时运行设定好的一次任务
 ```java
-@SpringBootApplication(exclude = {RedisAutoConfiguration.class})
+  //@Component
+  @Slf4j
+  public class PostLabelData implements CommandLineRunner {
+    ...
+  }
 ```
 
-修改后：
 
 
-```java
-@SpringBootApplication
-```
+启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
 
-### Elasticsearch 搜索引擎
-
-1）修改 `application.yml` 的 Elasticsearch 配置为你自己的：
-
-```yml
-spring:
-  elasticsearch:
-    uris: http://localhost:9200
-    username: root
-    password: 123456
-```
-
-2）复制 `sql/post_es_mapping.json` 文件中的内容，通过调用 Elasticsearch 的接口或者 Kibana Dev Tools 来创建索引（相当于数据库建表）
-
-```
-PUT post_v1
-{
- 参数见 sql/post_es_mapping.json 文件
-}
-```
-
-这步不会操作的话需要补充下 Elasticsearch 的知识，或者自行百度一下~
-
-3）开启同步任务，将数据库的帖子同步到 Elasticsearch
-
-找到 job 目录下的 `FullSyncPostToEs` 和 `IncSyncPostToEs` 文件，取消掉 `@Component` 注解的注释，再次执行程序即可触发同步：
-
-```java
-// todo 取消注释开启任务
-//@Component
-```

@@ -66,7 +66,7 @@ public class Post implements Serializable {
      */
     private String userName;
 
-    private Long PostId;
+    private Long postId;
 
     private String cover;
 

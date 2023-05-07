@@ -57,4 +57,10 @@ public interface PostService extends IService<Post> {
      * @return
      */
     Page<PostVO> getPostVOPage(Page<Post> postPage, HttpServletRequest request);
+
+    /**
+     * 获取最新的post的postId
+     * @return
+     */
+    Long getLatestPostId();
 }

@@ -1,6 +1,7 @@
 package com.yupi.springbootinit.job.once;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -8,6 +9,8 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.yupi.springbootinit.common.ErrorCode;
+import com.yupi.springbootinit.constant.CommonConstant;
+import com.yupi.springbootinit.constant.CrawlPostConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.model.entity.Label;
 import com.yupi.springbootinit.model.vo.LabelVo;
@@ -25,22 +28,15 @@ import java.util.stream.Collectors;
  * @author: tangchongjie
  * @creattime: 2023--05--05 15:43
  * @description 在程序启动时启动一次，将编程导航中的标签分类构造成树形结构导入
+ *          其数据包含: 1.已经分层好的categoryGroupTagsList中的标签数据
+ *                    2.commonGroupTagsList热门标签数据
+ *                    3.从allTagList中去除上面两个中的数据的其他标签数据
  */
-@Component
+//@Component
 @Slf4j
 public class PostLabelData implements CommandLineRunner {
 
     public static final String LABEL_DATA_URL = "https://www.code-nav.cn/api/tag/get/all_select";
-
-    /**
-     * 响应的json中状态码的json字段名
-     */
-    public static String CODE = "code";
-
-    /**
-     * 向编程导航请求数据后得成功状态码
-     */
-    public static Integer SUCCESS_CODE = 0;
 
     /**
      * 根标签得父id
@@ -83,11 +79,15 @@ public class PostLabelData implements CommandLineRunner {
         //发起http请求
         String body = HttpRequest.get(LABEL_DATA_URL)
                 .timeout(20000)//超时，毫秒
+                .header(Header.USER_AGENT, CrawlPostConstant.USER_AGENT)
+                .header(Header.REFERER,CrawlPostConstant.REFERER)
                 .execute().body();
 
         Map map = JSONUtil.toBean(body, Map.class);
 
-        if(ObjectUtil.isEmpty(map.get(CODE)) || !SUCCESS_CODE.equals(map.get(CODE))){
+        //如果请求失败，抛异常
+        if(ObjectUtil.isEmpty(map.get(CrawlPostConstant.CODE)) ||
+                !CrawlPostConstant.SUCCESS_CODE.equals(map.get(CrawlPostConstant.CODE))){
             System.out.println("向编程导航网站请求标签数据失败");
             throw new BusinessException(ErrorCode.HTTP_REQUEST_FAIL, "爬取标签数据失败");
         }
@@ -100,13 +100,15 @@ public class PostLabelData implements CommandLineRunner {
         JSONArray commonGroupTagsList = (JSONArray) data.get(COMMON_GROUP_TAGS_LIST);
         JSONArray allTagsList = (JSONArray) data.get(ALL_TAG_LIST);
 
+
+        log.info("The data crawl of label start --->");
         //入库分层的标签
         addLabelToDB(categoryGroupTagsList);
         //入库热门标签
         addLabelToDB(commonGroupTagsList);
         //入库其他的标签
         addOtherTags(allTagsList);
-        log.info("标签数据解析、入库成功");
+        log.info("The data crawl of label end --->");
 
     }
 
@@ -138,7 +140,7 @@ public class PostLabelData implements CommandLineRunner {
         });
 
         labelService.saveBatch(labelList);
-        log.info("其他的标签入库成功");
+        log.info("get other labels data success");
     }
 
 
@@ -164,10 +166,13 @@ public class PostLabelData implements CommandLineRunner {
                 parseLabel(cateLabel.getId(), cateValue);
             }
         }
+        log.info("get categoryGroupTagsList labels data success");
+
     }
 
     public void addLabelToDB(JSONArray array){
         parseLabel(0l, array);
+        log.info("get commonGroupTagsList labels data success");
     }
 
 
