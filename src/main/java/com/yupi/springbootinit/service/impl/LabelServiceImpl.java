@@ -84,7 +84,7 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, Label>
 
         //先遍历找到根标签,其父类id为 0l
         List<LabelVo> targetLabelDataList = allLabelData.stream().filter(item -> {
-            return item.getParentId() == PAREN_ID;
+            return item.getParentId().equals(PAREN_ID);
         }).map(label -> {
             LabelVo labelVo = new LabelVo();
             labelVo.setLabelName(label.getLabelName());
@@ -93,27 +93,6 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, Label>
             labelVo.setChildrenLabel(selectChildren(labelVo, allLabelData));
             return labelVo;
         }).collect(Collectors.toList());
-
-
-        CountDownLatch countDownLatch = new CountDownLatch(targetLabelDataList.size());
-
-//        for (LabelVo labelVo : targetLabelDataList) {
-//            threadPool.submit(()->{
-//                try {
-//                    //为标签设置子标签
-//                    labelVo.setChildrenLabel(selectChildren(labelVo, allLabelData));
-//                }finally {
-//                    countDownLatch.countDown();
-//                }
-//            });
-//        }
-        //关闭线程处理
-//        try {
-//            countDownLatch.await();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-
 
         log.info("label数据构造成功");
 
@@ -144,13 +123,7 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, Label>
         }
 
         Map<String, List<Long>> map = new HashMap<>();
-//        try{
-            //因为传入的元素是有子元素的（多级标签），所以需要小小递归一下下
-             addItem(list, map);
-//        }catch (Exception e){
-//            log.info(e.getMessage());
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "文章的标签有重复");
-//        }
+        addItem(list, map);
 
         return map;
     }

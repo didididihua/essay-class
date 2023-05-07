@@ -17,7 +17,9 @@ public enum ErrorCode {
     SYSTEM_ERROR(50000, "系统内部异常"),
     OPERATION_ERROR(50001, "操作失败"),
 
-    NO_LABEL_DATA(50002, "label数据为空");
+    NO_LABEL_DATA(50002, "label数据为空"),
+
+    HTTP_REQUEST_FAIL(50003, "数据爬取失败");
 
     /**
      * 状态码
