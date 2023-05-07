@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yupi.springbootinit.mapper.PostLabelMapper">
+
+    <resultMap id="LabelResultMap" type="com.yupi.springbootinit.model.entity.PostLabel">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="postId" column="postId" jdbcType="BIGINT"/>
+        <result property="labelId" column="labelId" jdbcType="BIGINT"/>
+        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+        <result property="isDelete" column="isDelete"/>
+    </resultMap>
+
+
+
+</mapper>
