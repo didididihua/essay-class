@@ -5,6 +5,10 @@
 > 在springboot-init项目基础上完成
 
 > 作者：didididi (1514176166@qq.com)
+```yaml
+clone本项目 : git clone -b master https://github.com/didididihua/essay-class.git
+github : https://github.com/didididihua/essay-class/tree/master
+```
 
 ## 项目添加功能简介：
 * **1.标签数据获取：**
@@ -30,11 +34,11 @@
   * 编程导航的html数据应该要使用Selenium去模拟浏览器解析js数据得到吧
 
 ### 简图：
-![img.png](img.png)
+![img.png](doc/img.png)
 
-![img_1.png](img_1.png)
+![img_1.png](doc/img_1.png)
 
-![img_2.png](img_2.png)
+![img_2.png](doc/img_2.png)
 
 ## 项目启动：
 > 本项目运行在有Maven与JDK8及以上的环境下
