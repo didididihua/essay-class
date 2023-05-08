@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 #source $(dirname $0)/../../env.sh
 # 进入当前文件目录

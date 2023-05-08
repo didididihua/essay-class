@@ -32,6 +32,9 @@ github : https://github.com/didididihua/essay-class/tree/master
     * 使用jsoup从快代理网站的html数据，得到一些高匿ip,形成ip池
     * 使用代理的请求会进行一定次数的失败重试（简单for循环，嘿嘿）
   * 编程导航的html数据应该要使用Selenium去模拟浏览器解析js数据得到吧
+* **5. 关于CI/CD**
+  * 使用assembly插件进行打包，配置好运行脚本，这样能打包出一个bin目录，里面包含这启动这个项目的运行脚本
+  * 使用阿里云云效的流水线进行简单的CI/CD
 
 ### 简图：
 ![img.png](doc/img.png)
