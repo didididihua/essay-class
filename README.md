@@ -43,6 +43,11 @@ github : https://github.com/didididihua/essay-class/tree/master
 
 ![img_2.png](doc/img_2.png)
 
+![img.png](doc/img5.png)
+
+### 效果简图：
+![img.png](doc/img4.png)
+
 ## 项目启动：
 > 本项目运行在有Maven与JDK8及以上的环境下
 ### 1. 更改配置:
