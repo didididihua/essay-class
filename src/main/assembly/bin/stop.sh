@@ -1,15 +1,18 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# jar包名称
-SERVER_JAR="springboot-init-1.0-SNAPSHOT.jar"
+# 项目名称
+APPLICATION="${project.artifactId}"
 
-# 停止项目
-echo -n "Stopping server ..."
-    PID=$(ps -ef | grep $SERVER_JAR | grep -v grep |awk '{print $2}')
-if [ -z "$PID" ]; then
-  echo Application is already stopped
+# 项目启动jar包名称
+APPLICATION_JAR="${project.build.finalName}.jar"
+
+# 通过项目名称查找到PI，然后kill -9 pid
+PID=$(ps -ef | grep "${APPLICATION_JAR}" | grep -v grep | awk '{ print $2 }')
+if [[ -z "$PID" ]]
+then
+    echo ${APPLICATION} is already stopped
 else
-  echo kill $PID
-  kill -9 $PID
+    echo kill  ${PID}
+    kill -9 ${PID}
+    echo ${APPLICATION} stopped successfully
 fi
-exit 0

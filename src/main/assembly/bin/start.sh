@@ -1,72 +1,109 @@
-#!/bin/sh
+#!/bin/bash
 
-#source $(dirname $0)/../../env.sh
-# 进入当前文件目录
+# 项目名称
+SERVER_NAME="${project.artifactId}"
+
+# jar名称
+JAR_NAME="${project.build.finalName}.jar"
+
+# 进入bin目录
 cd `dirname $0`
-# 返回上一级
+# bin目录绝对路径
+BIN_DIR=`pwd`
+# 返回到上一级项目根目录路径
 cd ..
+# 打印项目根目录绝对路径
+# `pwd` 执行系统命令并获得结果
+DEPLOY_DIR=`pwd`
 
-# jar包名称
-#PROJECT_VERSION=`sed '/^application.version=/!d;s/.*=//' conf/application.properties`
-#SERVER_JAR="$SERVER_NAME-$PROJECT_VERSION.jar"
-SERVER_JAR="springboot-init-1.0-SNAPSHOT.jar"
-BASE_DIR=`pwd`
+# 外部配置文件绝对目录,如果是目录需要/结尾，也可以直接指定文件
+# 如果指定的是目录,spring则会读取目录中的所有配置文件
+CONF_DIR=$DEPLOY_DIR/config
+# SERVER_PORT=`sed '/server.port/!d;s/.*=//' config/application.properties | tr -d '\r'`
+# 获取应用的端口号
+SERVER_PORT=`sed -nr '/port: [0-9]+/ s/.*port: +([0-9]+).*/\1/p' config/application.yml`
 
-# 获取java路径
-if [ "$JAVA_HOME" != "" ]; then
- JAVA="$JAVA_HOME/bin/java"
-else
- JAVA=java
+PIDS=`ps -f | grep java | grep "$CONF_DIR" |awk '{print $2}'`
+if [ "$1" = "status" ]; then
+    if [ -n "$PIDS" ]; then
+        echo "The $SERVER_NAME is running...!"
+        echo "PID: $PIDS"
+        exit 0
+    else
+        echo "The $SERVER_NAME is stopped"
+        exit 0
+    fi
 fi
 
-# 指定日志输出路径
-LOGS_DIR=""
-if [ -n "$LOGS_FILE" ]; then
-    LOGS_DIR=`dirname $LOGS_FILE`
-else
-    LOGS_DIR=$BASE_DIR/logs
+if [ -n "$PIDS" ]; then
+    echo "ERROR: The $SERVER_NAME already started!"
+    echo "PID: $PIDS"
+    exit 1
 fi
+
+if [ -n "$SERVER_PORT" ]; then
+    SERVER_PORT_COUNT=`netstat -tln | grep $SERVER_PORT | wc -l`
+    if [ $SERVER_PORT_COUNT -gt 0 ]; then
+        echo "ERROR: The $SERVER_NAME port $SERVER_PORT already used!"
+        exit 1
+    fi
+fi
+
+# 项目日志输出绝对路径
+LOGS_DIR=$DEPLOY_DIR/logs
+# 如果logs文件夹不存在,则创建文件夹
 if [ ! -d $LOGS_DIR ]; then
     mkdir $LOGS_DIR
 fi
-STDOUT_FILE=$LOGS_DIR/stdout.log
+STDOUT_FILE=$LOGS_DIR/catalina.log
 
-# 设置jvm参数
-JAVA_OPTS="-server -Xms512m -Xmx512m -Xmn256m -Xss1m \
--XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC -XX:+UseCMSCompactAtFullCollection \
--XX:CMSInitiatingOccupancyFraction=70 \
--Xloggc:$LOGS_DIR/gc.log"
-
-# 如果项目已经启动则之前停止项目
-echo -n "Starting server ..."
- PID=$(ps -ef | grep $SERVER_JAR | grep -v grep |awk '{print $2}')
-if [ -z "$PID" ]; then
- echo Application is already stopped
-else
- echo kill $PID
- kill -9 $PID
+# JVM Configuration
+JAVA_OPTS=" -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true "
+JAVA_DEBUG_OPTS=""
+if [ "$1" = "debug" ]; then
+    JAVA_DEBUG_OPTS=" -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n "
 fi
 
-# 以指定参数启动项目
-nohup $JAVA $JAVA_OPTS $JAVA_DEBUG_OPT -jar lib/$SERVER_JAR "--spring.profiles.active=prod" > $STDOUT_FILE 2>&1 &
-
-if [ $? -eq 0 ];then
- # echo -n $! > "$PIDFILE"
- if [ $? -eq 0 ]
- then
- sleep 1
- echo STARTED
- else
- echo FAILED TO WRITE PID
- exit 1
- fi
-else
- echo SERVER DID NOT START
- exit 1
+JAVA_JMX_OPTS=""
+if [ "$1" = "jmx" ]; then
+    JAVA_JMX_OPTS=" -Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false "
 fi
 
-PID_NOW=`ps -ef | grep java | grep -v grep | grep "$SERVER_JAR" | awk '{print $2}'`
-# 打印参数
-echo "进程ID: $PID_NOW"
-echo "输出日志：$STDOUT_FILE"
+JAVA_MEM_OPTS=""
+BITS=`java -version 2>&1 | grep -i 64-bit`
+if [ -n "$BITS" ]; then
+    JAVA_MEM_OPTS=" -server -Xmx512m -Xms512m -Xmn256m -XX:PermSize=128m -Xss256k -XX:+DisableExplicitGC -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+UseCMSCompactAtFullCollection -XX:LargePageSizeInBytes=128m -XX:+UseFastAccessorMethods -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 "
+else
+    JAVA_MEM_OPTS=" -server -Xms512m -Xmx512m -XX:PermSize=128m -XX:SurvivorRatio=2 -XX:+UseParallelGC "
+fi
 
+# 加载外部log4j2文件的配置
+LOG_IMPL_FILE=log4j2.xml
+LOGGING_CONFIG=""
+if [ -f "$CONF_DIR/$LOG_IMPL_FILE" ]
+then
+    LOGGING_CONFIG="-Dlogging.config=$CONF_DIR/$LOG_IMPL_FILE"
+fi
+CONFIG_FILES=" -Dlogging.path=$LOGS_DIR $LOGGING_CONFIG -Dspring.config.location=$CONF_DIR/ "
+echo -e "Starting the $SERVER_NAME ..."
+nohup java $JAVA_OPTS $JAVA_MEM_OPTS $JAVA_DEBUG_OPTS $JAVA_JMX_OPTS $CONFIG_FILES -jar $DEPLOY_DIR/lib/$JAR_NAME > $STDOUT_FILE 2>&1 &
+
+COUNT=0
+while [ $COUNT -lt 1 ]; do
+    echo -e ".\c"
+    sleep 1
+    if [ -n "$SERVER_PORT" ]; then
+        COUNT=`netstat -an | grep $SERVER_PORT | wc -l`
+    else
+       COUNT=`ps -f | grep java | grep "$DEPLOY_DIR" | awk '{print $2}' | wc -l`
+    fi
+    if [ $COUNT -gt 0 ]; then
+        break
+    fi
+done
+
+
+echo "OK!"
+PIDS=`ps -f | grep java | grep "$DEPLOY_DIR" | awk '{print $2}'`
+echo "PID: $PIDS"
+echo "STDOUT: $STDOUT_FILE"
