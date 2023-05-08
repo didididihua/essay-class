@@ -24,3 +24,6 @@ mybatis-plus:
   configuration:
     # 生产环境关闭日志
     log-impl: ''
+knife4j:
+  enable: true
+  production: true

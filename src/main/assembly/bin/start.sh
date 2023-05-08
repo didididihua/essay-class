@@ -34,8 +34,8 @@ STDOUT_FILE=$LOGS_DIR/stdout.log
 # 设置jvm参数
 JAVA_OPTS="-server -Xms512m -Xmx512m -Xmn256m -Xss1m \
 -XX:SurvivorRatio=4 -XX:+UseConcMarkSweepGC -XX:+UseCMSCompactAtFullCollection \
--XX:CMSInitiatingOccupancyFraction=70 -XX:+PrintGCDateStamps \
--XX:+PrintGCDetails -Xloggc:$LOGS_DIR/gc.log"
+-XX:CMSInitiatingOccupancyFraction=70 \
+-Xloggc:$LOGS_DIR/gc.log"
 
 # 如果项目已经启动则之前停止项目
 echo -n "Starting server ..."
@@ -48,7 +48,7 @@ else
 fi
 
 # 以指定参数启动项目
-nohup $JAVA $JAVA_OPTS $JAVA_DEBUG_OPT -jar -Dspring.profiles.active=prod lib/$SERVER_JAR > $STDOUT_FILE 2>&1 &
+nohup $JAVA $JAVA_OPTS $JAVA_DEBUG_OPT -jar lib/$SERVER_JAR "--spring.profiles.active=prod" > $STDOUT_FILE 2>&1 &
 
 if [ $? -eq 0 ];then
  # echo -n $! > "$PIDFILE"
