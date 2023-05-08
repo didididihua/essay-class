@@ -27,4 +27,9 @@ public interface RedisKeyConstant {
      */
     Long EXPIRE_TIME = 60l;
 
+    /**
+     * 在进行跟新redis中的数据时，延迟双删的第二次删除前延迟的时间，毫秒
+     */
+    Long UPDATE_SLEEP_TIME = 3 * 6 * 1000l;
+
 }

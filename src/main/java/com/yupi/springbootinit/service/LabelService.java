@@ -22,4 +22,9 @@ public interface LabelService extends IService<Label> {
     List<LabelVo> getTreeLabelData();
 
     public Map<String, List<Long>> getLabelNameToIdMap(String list);
+
+    /**
+     * 使用延迟双删，用于对redis的数据进行更新
+     */
+    void updateLabelData();
 }

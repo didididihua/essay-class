@@ -9,13 +9,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -81,6 +80,23 @@ public class IpPoolTest {
                 port.remove(i);
             }
         }
+
+    }
+
+
+    @Test
+    public void testGetPage() throws IOException {
+
+        Document doc = Jsoup.connect("https://www.code-nav.cn/")
+                .header(Header.USER_AGENT.toString(), CrawlPostConstant.USER_AGENT)
+                .header(Header.REFERER.toString(), CrawlPostConstant.REFERER)
+                .get();
+
+        System.out.println(doc.body());
+
+        WebDriver driver = new ChromeDriver();
+        driver.get("https://www.code-nav.cn/");
+
 
     }
 

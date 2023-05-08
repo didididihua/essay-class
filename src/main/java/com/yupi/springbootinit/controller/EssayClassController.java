@@ -73,7 +73,19 @@ public class EssayClassController {
         Long id = postLabelQueryRequest.getId();
         Page<Post> postPage = postLabelService.getPostVOByLabelId(current, size, id);
 
-        return null;
+        return ResultUtils.success(postPage);
+    }
+
+
+    /**
+     * 用于更新label标签数据的请求
+     * @return
+     */
+    public BaseResponse<String> updateLabelData(){
+
+        labelService.updateLabelData();
+
+        return ResultUtils.success("更新成功");
     }
 
 

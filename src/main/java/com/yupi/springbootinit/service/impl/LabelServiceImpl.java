@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 /**
  * @author: tangchongjie
  * @creattime: 2023--05--05 14:52
- * @description
+ * @description 对label数据的一些操作
  */
 @Service
 @Slf4j
@@ -93,7 +93,6 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, Label>
             labelVo.setChildrenLabel(selectChildren(labelVo, allLabelData));
             return labelVo;
         }).collect(Collectors.toList());
-
         log.info("label数据构造成功");
 
         //构造一下以labelName为key, 存储labelId的list为value的map，这是因为可能一个标签存在于多个父标签下，方便按名获取到id
@@ -155,13 +154,43 @@ public class LabelServiceImpl extends ServiceImpl<LabelMapper, Label>
     /**
      * 上一个方法的重载
      * @param list
-     * @return
+     * @return labelName与labelId list的映射map
      */
     @Override
     public Map<String, List<Long>> getLabelNameToIdMap(String list) {
         List<LabelVo> labelVos = JSONUtil.toBean(list, new TypeReference<List<LabelVo>>() {
         }, false);
         return getLabelNameToIdMap(labelVos);
+    }
+
+
+    @Override
+    public void updateLabelData() {
+        String oldData = stringRedisTemplate.opsForValue().get(RedisKeyConstant.LABEL_DATA_KEY);
+
+        //在redis中有数据时才进行更新
+        if(!StrUtil.isBlank(oldData)){
+            log.info("update label data start ===");
+            //先删缓存
+            stringRedisTemplate.opsForValue().getAndDelete(RedisKeyConstant.LABEL_DATA_KEY);
+            stringRedisTemplate.opsForValue().getAndDelete(RedisKeyConstant.LABEL_MAP_KEY);
+
+            //重新从数据库中构造数据
+            getTreeLabelData();
+
+            //睡一会
+            try {
+                Thread.currentThread().sleep(RedisKeyConstant.UPDATE_SLEEP_TIME);
+            } catch (InterruptedException e) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "进行延迟双删的延时时报错");
+            }finally {
+                //再次删缓存
+                stringRedisTemplate.opsForValue().getAndDelete(RedisKeyConstant.LABEL_DATA_KEY);
+                stringRedisTemplate.opsForValue().getAndDelete(RedisKeyConstant.LABEL_MAP_KEY);
+            }
+
+            log.info("update label data success ===");
+        }
     }
 
     /**
